@@ -99,6 +99,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     name       = "system"
     node_count = var.aks_node_count
     vm_size    = var.aks_node_size
+    max_pods = var.aks_nax_pods 
 
     # Disque OS raisonnable pour le node
     os_disk_size_gb = 30
