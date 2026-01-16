@@ -4,7 +4,7 @@ Infrastructure Azure (IaC) pour le projet RNCP DevOps.
 
 ## Ce que ce Terraform crée
 - 1 Resource Group (RG) dédié au projet
-- 1 AKS (API publique) avec 1 node (Standard_B2s)
+- 1 AKS (API publique) avec 1 node (Standard_B2s_v2)
 - 1 Azure Container Registry (SKU Basic)
 - 1 Storage Account + 1 container Blob (pour les sauvegardes Velero)
 
