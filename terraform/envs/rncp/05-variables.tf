@@ -6,14 +6,19 @@ variable "location" {
 
 variable "prefix" {
   type        = string
-  description = "Préfixe lisible"
+  description = "Préfixe lisible (noms RG/AKS)"
   default     = "idarius-rncp"
 }
 
 variable "prefix_compact" {
   type        = string
-  description = "Préfixe sans - pour respecter les contraintes de nommage"
+  description = "Préfixe compact (sans tirets) pour respecter les contraintes ACR/Storage"
   default     = "idariusrncp"
+
+  validation {
+    condition     = can(regex("^[a-z0-9]+$", var.prefix_compact))
+    error_message = "prefix_compact doit contenir uniquement des lettres minuscules et des chiffres (pas de tirets)."
+  }
 }
 
 variable "aks_node_size" {
@@ -23,9 +28,14 @@ variable "aks_node_size" {
 }
 
 variable "aks_max_pods" {
-  type        = string
-  description = "Nombre de pods max par nodes AKS"
+  type        = number
+  description = "Nombre de pods max par node AKS"
   default     = 60
+
+  validation {
+    condition     = var.aks_max_pods >= 10 && var.aks_max_pods <= 250
+    error_message = "aks_max_pods doit être entre 10 et 250."
+  }
 }
 
 variable "aks_node_count" {
@@ -43,7 +53,3 @@ variable "tags" {
   }
 }
 
-variable "subscription_id" {
-  type        = string
-  description = "Subscription Azure cible"
-}

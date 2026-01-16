@@ -1,9 +1,11 @@
 # Terraform
-.terraform/
-*.tfstate
-*.tfstate.*
+**/.terraform/
+**/.terraform.lock.hcl
+**/*.tfstate
+**/*.tfstate.*
 *.tfvars
-crash.log
+**/crash.log
+**/crash.*.log
 override.tf
 override.tf.json
 *_override.tf
@@ -16,7 +18,7 @@ tfplan*
 *.pem
 *.key
 kubeconfig
-kubeconfig*
+**/kubeconfig
 
 # OS / divers
 .DS_Store
