@@ -17,8 +17,8 @@ resource "kubernetes_namespace_v1" "argocd" {
 # Installation Argo CD via Helm
 resource "helm_release" "argocd" {
   depends_on = [azurerm_kubernetes_cluster.aks]
-  name      = "argocd"
-  namespace = kubernetes_namespace_v1.argocd.metadata[0].name
+  name       = "argocd"
+  namespace  = kubernetes_namespace_v1.argocd.metadata[0].name
 
   repository = "https://argoproj.github.io/argo-helm"
   chart      = "argo-cd"
@@ -70,5 +70,5 @@ controller:
       cpu: 500m
       memory: 512Mi
 YAML
-]
+  ]
 }
