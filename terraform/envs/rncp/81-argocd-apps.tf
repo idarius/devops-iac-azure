@@ -24,7 +24,7 @@ applications:
       path: cluster/rncp-aks
       directory:
         recurse: true
-        exclude: "{**/kustomization.yaml,**/secret-generator.yaml,**/*.sops.yaml,**/*.secret.sops.yaml}"
+        include: '{**/*project.yaml,**/application.yaml,**/applicationset.yaml}'
     destination:
       server: https://kubernetes.default.svc
       namespace: argocd
