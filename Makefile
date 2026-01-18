@@ -4,7 +4,7 @@ TF_DIR ?= terraform/envs/rncp
 KUBECONFIG_PATH ?= $(HOME)/devops/rncp/kubeconfig
 
 .PHONY: help azure-env tf-init tf-fmt tf-validate tf-plan tf-apply tf-destroy outputs kubeconfig \
-        argocd-forward argocd-pass grafana-forward prometheus-forward alertmanager-forward demo-up
+        argocd-forward argocd-pass grafana-forward prometheus-forward alertmanager-forward demo-up sops-bootstrap
 
 help:
 	@echo "Targets:"
@@ -23,7 +23,8 @@ help:
 	@echo "  prometheus-forward   port-forward Prometheus (http://localhost:9090)"
 	@echo "  alertmanager-forward port-forward Alert demo"
 	@echo "  demo-up              apply + kubeconfig + print ArgoCD pass + start port-forward"
-
+	@echo "  sops-bootstrap       bootstrap sops secrets in argocd"
+	
 # Juste pour vérifier que le script fonctionne (utile en debug)
 azure-env:
 	@bash -lc 'source ./scripts/azure-env.sh >/dev/null && echo "Azure env OK (ARM_SUBSCRIPTION_ID=$$ARM_SUBSCRIPTION_ID)"'
@@ -52,6 +53,9 @@ outputs:
 kubeconfig:
 	KUBECONFIG_PATH=$(KUBECONFIG_PATH) TF_DIR=$(TF_DIR) ./scripts/kubeconfig.sh
 
+sops-bootstrap:
+	@AGE_KEY_FILE=$(HOME)/devops/rncp/age.key ./scripts/sops-bootstrap.sh
+
 argocd-forward:
 	./scripts/portforward-argocd.sh
 
@@ -76,6 +80,7 @@ alertmanager-forward:
 demo-up:
 	@$(MAKE) tf-apply
 	@$(MAKE) kubeconfig
+	@$(MAKE) sops-bootstrap
 	@echo ""
 	@echo "ArgoCD URL: http://localhost:8080"
 	@echo -n "ArgoCD admin password: "
@@ -83,3 +88,4 @@ demo-up:
 	@echo ""
 	@echo "Starting port-forward (Ctrl+C to stop)..."
 	@$(MAKE) argocd-forward
+

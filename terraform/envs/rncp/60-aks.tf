@@ -19,7 +19,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     vm_size    = var.aks_node_size
     max_pods   = var.aks_max_pods
 
-    os_disk_size_gb = 30
+    os_disk_size_gb = 60
   }
 
   network_profile {

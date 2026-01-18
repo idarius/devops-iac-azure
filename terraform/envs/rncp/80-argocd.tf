@@ -19,15 +19,93 @@ server:
   service:
     type: ClusterIP
 
+# Active KSOPS via kustomize alpha plugins + exec
+configs:
+  cm:
+    kustomize.buildOptions: "--enable-alpha-plugins --enable-exec"
+
 repoServer:
   replicas: 1
-  resources:
-    requests:
-      cpu: 50m
-      memory: 128Mi
-    limits:
-      cpu: 300m
-      memory: 256Mi
+
+  volumes:
+    - name: custom-tools
+      emptyDir: {}
+    - name: kustomize-plugins
+      emptyDir: {}
+    - name: sops-age
+      secret:
+        secretName: sops-age
+        optional: true
+
+  initContainers:
+    # 1) Copie kustomize depuis l'image Argo CD (déjà OK et pullable)
+    - name: copy-kustomize
+      image: quay.io/argoproj/argocd:v3.2.5
+      command: ["/bin/cp"]
+      args: ["-f", "/usr/local/bin/kustomize", "/custom-tools/kustomize"]
+      volumeMounts:
+        - name: custom-tools
+          mountPath: /custom-tools
+
+    # 2) Télécharge ksops depuis GitHub Releases + l'installe comme plugin Kustomize
+    - name: install-ksops
+      image: alpine:3.20
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          set -euo pipefail
+          apk add --no-cache curl tar
+
+          KSOPS_VERSION="4.4.0"
+
+          # Download binaire
+          curl -fsSL -o /tmp/ksops.tar.gz \
+            "https://github.com/viaduct-ai/kustomize-sops/releases/download/v$${KSOPS_VERSION}/ksops_$${KSOPS_VERSION}_Linux_x86_64.tar.gz"
+
+          tar -xzf /tmp/ksops.tar.gz -C /tmp
+          mv /tmp/ksops /custom-tools/ksops
+          chmod +x /custom-tools/ksops
+
+          # Install plugin at the standard Kustomize plugin path:
+          # $XDG_CONFIG_HOME/kustomize/plugin/<group>/<version>/<kind>/<kind>
+          mkdir -p /kustomize-plugins/viaduct.ai/v1/ksops
+          cp /custom-tools/ksops /kustomize-plugins/viaduct.ai/v1/ksops/ksops
+          chmod +x /kustomize-plugins/viaduct.ai/v1/ksops/ksops
+      volumeMounts:
+        - name: custom-tools
+          mountPath: /custom-tools
+        - name: kustomize-plugins
+          mountPath: /kustomize-plugins
+
+  volumeMounts:
+    # kustomize binaire
+    - name: custom-tools
+      mountPath: /usr/local/bin/kustomize
+      subPath: kustomize
+
+    # (optionnel) garder ksops aussi dans PATH pour debug
+    - name: custom-tools
+      mountPath: /usr/local/bin/ksops
+      subPath: ksops
+
+    # plugin path Kustomize
+    - name: kustomize-plugins
+      mountPath: /.config/kustomize/plugin
+
+    # clé Age SOPS
+    - name: sops-age
+      mountPath: /.config/sops/age
+
+  env:
+    - name: XDG_CONFIG_HOME
+      value: /.config
+    - name: HOME
+      value: /.config
+    - name: KUSTOMIZE_PLUGIN_HOME
+      value: /.config/kustomize/plugin
+    - name: SOPS_AGE_KEY_FILE
+      value: /.config/sops/age/age.agekey
+
 
 applicationSet:
   replicaCount: 1
@@ -50,30 +128,6 @@ controller:
     limits:
       cpu: 500m
       memory: 1Gi
-
-extraObjects:
-  - apiVersion: argoproj.io/v1alpha1
-    kind: Application
-    metadata:
-      name: platform-root
-      namespace: argocd
-    spec:
-      project: default
-      source:
-        repoURL: https://github.com/idarius/devops-platform-k8s.git
-        targetRevision: main
-        path: clusters/rncp-aks
-        directory:
-          recurse: true
-      destination:
-        server: https://kubernetes.default.svc
-        namespace: argocd
-      syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
-        syncOptions:
-          - CreateNamespace=true
 YAML
   ]
 }
