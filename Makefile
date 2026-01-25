@@ -5,7 +5,7 @@ TF_DIR ?= terraform/envs/rncp
 KUBECONFIG_PATH ?= $(HOME)/devops/rncp/kubeconfig
 
 .PHONY: tf-init tf-fmt tf-validate tf-plan tf-apply tf-destroy outputs kubeconfig sops-bootstrap \
-        forward-argocd pass-argocd pass-grafana forward-grafana forward-prometheus forward-alertmanager demo-up forward-all
+        forward-argocd pass-argocd pass-grafana forward-grafana forward-prometheus forward-alertmanager demo-up forward-all velero-bootstrap
 
 
 azure-env:
@@ -59,6 +59,8 @@ forward-alertmanager:
 forward-all:
 	@./scripts/portforward-all.sh
 
+velero-bootstrap:
+	@TF_DIR=$(TF_DIR) PLATFORM_REPO_DIR=$(HOME)/devops/devops-platform-k8s ./scripts/velero-bootstrap.sh
 
 demo-up:
 	@$(MAKE) tf-init
@@ -67,6 +69,7 @@ demo-up:
 	@$(MAKE) tf-apply
 	@$(MAKE) kubeconfig
 	@$(MAKE) sops-bootstrap
+	@$(MAKE) velero-bootstrap
 	@echo -n "ArgoCD admin password: "
 	@$(MAKE) pass-argocd
 	@echo -n "Grafana admin password: "

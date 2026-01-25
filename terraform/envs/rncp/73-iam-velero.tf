@@ -14,8 +14,7 @@ resource "azuread_service_principal_password" "velero" {
   service_principal_id = azuread_service_principal.velero.id
   display_name         = "velero-client-secret"
 
-  # 2 ans
-  end_date_relative = "17520h"
+  end_date_relative = "17520h" # 2 ans
 }
 
 # Blob access (object storage)
