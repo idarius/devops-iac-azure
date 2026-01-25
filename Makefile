@@ -1,4 +1,5 @@
 SHELL := /usr/bin/env bash
+MAKEFLAGS += --no-print-directory
 
 TF_DIR ?= terraform/envs/rncp
 KUBECONFIG_PATH ?= $(HOME)/devops/rncp/kubeconfig
@@ -11,13 +12,13 @@ azure-env:
 	@bash -lc 'source ./scripts/azure-env.sh >/dev/null && echo "Azure env OK (ARM_SUBSCRIPTION_ID=$$ARM_SUBSCRIPTION_ID)"'
 
 tf-init:
-	terraform -chdir=$(TF_DIR) init
+	@terraform -chdir=$(TF_DIR) init
 
 tf-fmt:
-	terraform -chdir=$(TF_DIR) fmt -recursive
+	@terraform -chdir=$(TF_DIR) fmt -recursive
 
 tf-validate:
-	terraform -chdir=$(TF_DIR) validate
+	@terraform -chdir=$(TF_DIR) validate
 
 tf-plan:
 	@bash -lc 'source ./scripts/azure-env.sh >/dev/null && terraform -chdir=$(TF_DIR) plan'
@@ -29,34 +30,34 @@ tf-destroy:
 	@bash -lc 'source ./scripts/azure-env.sh >/dev/null && terraform -chdir=$(TF_DIR) destroy'
 
 outputs:
-	terraform -chdir=$(TF_DIR) output
+	@terraform -chdir=$(TF_DIR) output
 
 kubeconfig:
-	KUBECONFIG_PATH=$(KUBECONFIG_PATH) TF_DIR=$(TF_DIR) ./scripts/kubeconfig.sh
+	@KUBECONFIG_PATH=$(KUBECONFIG_PATH) TF_DIR=$(TF_DIR) ./scripts/kubeconfig.sh
 
 sops-bootstrap:
 	@AGE_KEY_FILE=$(HOME)/devops/rncp/age.key ./scripts/sops-bootstrap.sh
 
 forward-argocd:
-	./scripts/portforward-argocd.sh
+	@./scripts/portforward-argocd.sh
 
 pass-argocd:
-	./scripts/pass-argocd.sh
+	@./scripts/pass-argocd.sh
 
 pass-grafana:
-	./scripts/pass-grafana.sh
+	@./scripts/pass-grafana.sh
 
 forward-grafana:
-	./scripts/portforward-grafana.sh
+	@./scripts/portforward-grafana.sh
 
 forward-prometheus:
-	./scripts/portforward-prometheus.sh
+	@./scripts/portforward-prometheus.sh
 
 forward-alertmanager:
-	./scripts/portforward-alertmanager.sh
+	@./scripts/portforward-alertmanager.sh
 
 forward-all:
-	./scripts/portforward-all.sh
+	@./scripts/portforward-all.sh
 
 
 demo-up:

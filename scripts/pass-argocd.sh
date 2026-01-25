@@ -1,7 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NS="${1:-argocd}"
+NS="argocd"
+SECRET="argocd-initial-admin-secret"
+KEY="password"
 
-kubectl -n "$NS" get secret argocd-initial-admin-secret \
-  -o jsonpath='{.data.password}' | base64 -d; echo
+# Si ArgoCD n'est pas encore déployé, on n'explose pas le make
+if ! kubectl get ns "${NS}" >/dev/null 2>&1; then
+  echo "N/A (namespace ${NS} absent)"
+  exit 0
+fi
+
+if ! kubectl -n "${NS}" get secret "${SECRET}" >/dev/null 2>&1; then
+  echo "N/A (secret ${SECRET} absent)"
+  exit 0
+fi
+
+kubectl -n "${NS}" get secret "${SECRET}" -o jsonpath="{.data.${KEY}}" | base64 -d
+echo
