@@ -26,5 +26,12 @@ resource "azurerm_kubernetes_cluster" "aks" {
     network_plugin = "azure"
   }
 
+  dynamic "api_server_access_profile" {
+    for_each = length(var.aks_api_authorized_ip_ranges) > 0 ? [1] : []
+    content {
+      authorized_ip_ranges = var.aks_api_authorized_ip_ranges
+    }
+  }
+
   tags = var.tags
 }

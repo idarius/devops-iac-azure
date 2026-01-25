@@ -53,6 +53,12 @@ variable "tags" {
   }
 }
 
+variable "aks_api_authorized_ip_ranges" {
+  type        = list(string)
+  description = "Liste d'IPs/CIDR autorisés à accéder à l'API AKS. laisser vide pour ne pas restreindre"
+  default     = ["82.65.41.225/32"]
+}
+
 ########################################
 # GitHub (OIDC + variables GitHub Actions)
 ########################################
