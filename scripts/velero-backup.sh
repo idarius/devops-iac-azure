@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Usage:
+#   ./scripts/velero-backup.sh dev
+#   ./scripts/velero-backup.sh prod
+#   ./scripts/velero-backup.sh both
+#
+# Env vars:
+#   VELERO_NS=velero
+#   DEV_NS=bookstack-dev
+#   PROD_NS=bookstack-prod
+#   TTL=72h0m0s
+#   WAIT=true|false
+
+VELERO_NS="${VELERO_NS:-velero}"
+DEV_NS="${DEV_NS:-bookstack-dev}"
+PROD_NS="${PROD_NS:-bookstack-prod}"
+TTL="${TTL:-72h0m0s}"
+WAIT="${WAIT:-true}"
+
+need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing dependency: $1"; exit 1; }; }
+need kubectl
+
+mode="${1:-}"
+if [[ -z "$mode" ]]; then
+  echo "Usage: $0 dev|prod|both"
+  exit 1
+fi
+
+ts="$(date +%Y%m%d-%H%M%S)"
+case "$mode" in
+  dev)
+    name="bookstack-dev-manual-${ts}"
+    namespaces=("$DEV_NS")
+    ;;
+  prod)
+    name="bookstack-prod-manual-${ts}"
+    namespaces=("$PROD_NS")
+    ;;
+  both)
+    name="bookstack-both-manual-${ts}"
+    namespaces=("$DEV_NS" "$PROD_NS")
+    ;;
+  *)
+    echo "ERROR: invalid mode '$mode' (expected dev|prod|both)"
+    exit 1
+    ;;
+esac
+
+echo "Creating Velero backup: ${name}"
+kubectl -n "$VELERO_NS" apply -f - <<EOF
+apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  name: ${name}
+  namespace: ${VELERO_NS}
+spec:
+  ttl: ${TTL}
+  includedNamespaces:
+$(for ns in "${namespaces[@]}"; do echo "    - ${ns}"; done)
+  defaultVolumesToFsBackup: true
+EOF
+
+echo "Backup created. Status:"
+kubectl -n "$VELERO_NS" get backup "$name" -o wide || true
+
+if [[ "$WAIT" == "true" ]]; then
+  echo "Waiting for completion..."
+  while true; do
+    phase="$(kubectl -n "$VELERO_NS" get backup "$name" -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+    [[ -z "$phase" ]] && phase="(pending)"
+    echo "  phase=${phase}"
+    case "$phase" in
+      Completed)
+        echo "OK: backup completed: ${name}"
+        break
+        ;;
+      Failed|PartiallyFailed)
+        echo "ERROR: backup ended with phase=${phase}"
+        kubectl -n "$VELERO_NS" describe backup "$name" || true
+        exit 2
+        ;;
+      *)
+        sleep 3
+        ;;
+    esac
+  done
+fi
+
+echo "Tip: Azure Blob should now contain backups/${name}/"
