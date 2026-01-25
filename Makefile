@@ -78,6 +78,12 @@ alertmanager-forward:
 # - affiche le password admin ArgoCD
 # - démarre le port-forward ArgoCD (bloquant tant que tu ne Ctrl+C)
 demo-up:
+	@echo "  tf-init              terraform init"
+	@echo "  tf-fmt               terraform fmt -recursive"
+	@echo "  tf-validate          terraform validate"
+	@$(MAKE) tf-init
+	@$(MAKE) tf-fmt
+	@$(MAKE) tf-validate
 	@$(MAKE) tf-apply
 	@$(MAKE) kubeconfig
 	@$(MAKE) sops-bootstrap
