@@ -47,3 +47,20 @@ output "subscription_id" {
   description = "Subscription ID"
   value       = data.azurerm_subscription.current.subscription_id
 }
+
+output "storage_account_key" {
+  description = "Primary access key du Storage Account (Velero) - à mettre dans le secret cloud-credentials"
+  value       = azurerm_storage_account.sa.primary_access_key
+  sensitive   = true
+}
+
+output "velero_client_id" {
+  description = "Client ID (App Registration) pour Velero"
+  value       = azuread_application.velero.client_id
+}
+
+output "velero_client_secret" {
+  description = "Client Secret pour Velero"
+  value       = azuread_service_principal_password.velero.value
+  sensitive   = true
+}
