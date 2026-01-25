@@ -32,3 +32,18 @@ output "velero_container_name" {
   description = "Container Blob Velero"
   value       = azurerm_storage_container.velero.name
 }
+
+output "gha_acr_client_id" {
+  description = "Client ID (App Registration) pour OIDC GitHub Actions -> Azure"
+  value       = azuread_application.gha_acr.client_id
+}
+
+output "tenant_id" {
+  description = "Tenant ID"
+  value       = data.azurerm_client_config.current.tenant_id
+}
+
+output "subscription_id" {
+  description = "Subscription ID"
+  value       = data.azurerm_subscription.current.subscription_id
+}

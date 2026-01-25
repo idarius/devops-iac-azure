@@ -53,3 +53,30 @@ variable "tags" {
   }
 }
 
+########################################
+# GitHub (OIDC + variables GitHub Actions)
+########################################
+
+variable "github_owner" {
+  type        = string
+  description = "Owner GitHub (org ou user)"
+  default     = "idarius"
+}
+
+variable "github_repo_bookstack" {
+  type        = string
+  description = "Repo GitHub de l'app (bookstack)"
+  default     = "devops-app-bookstack"
+}
+
+variable "github_branch" {
+  type        = string
+  description = "Branche autorisée pour le login OIDC GitHub Actions"
+  default     = "main"
+}
+
+variable "github_token" {
+  type        = string
+  description = "GitHub token (PAT) pour que Terraform crée automatiquement les GitHub Actions Variables"
+  sensitive   = true
+}
