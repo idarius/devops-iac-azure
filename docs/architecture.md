@@ -26,7 +26,7 @@ Mise en place d'une plateforme GitOps complète permettant de :
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                                  GITHUB                                      │
+│                                  GITHUB                                     │
 │  ┌─────────────────┐  ┌─────────────────────┐  ┌─────────────────────────┐  │
 │  │ devops-iac-azure│  │ devops-platform-k8s │  │ devops-app-bookstack    │  │
 │  │ (Terraform)     │  │ (Manifests K8s)     │  │ (App + CI/CD)           │  │
@@ -36,8 +36,8 @@ Mise en place d'une plateforme GitOps complète permettant de :
             │ terraform apply      │ sync                     │ push image
             ▼                      ▼                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                                  AZURE                                       │
-│                                                                              │
+│                                  AZURE                                      │
+│                                                                             │
 │  ┌──────────────┐    ┌──────────────────────────────────────────────────┐   │
 │  │     ACR      │◄───│                     AKS                          │   │
 │  │ (Registry)   │    │  ┌─────────────────────────────────────────────┐ │   │
@@ -45,19 +45,19 @@ Mise en place d'une plateforme GitOps complète permettant de :
 │                      │  │  (synchronise platform + apps depuis Git)   │ │   │
 │  ┌──────────────┐    │  └─────────────────────────────────────────────┘ │   │
 │  │   Storage    │    │                                                  │   │
-│  │   Account    │◄───│  ┌───────────┐ ┌───────────┐ ┌───────────────┐  │   │
-│  │  (Backups)   │    │  │  Traefik  │ │ Monitoring│ │    Velero     │  │   │
-│  └──────────────┘    │  └───────────┘ └───────────┘ └───────────────┘  │   │
+│  │   Account    │◄───│  ┌───────────┐ ┌───────────┐ ┌───────────────┐   │   │
+│  │  (Backups)   │    │  │  Traefik  │ │ Monitoring│ │    Velero     │   │   │
+│  └──────────────┘    │  └───────────┘ └───────────┘ └───────────────┘   │   │
 │                      │                                                  │   │
-│                      │  ┌─────────────────┐  ┌─────────────────┐       │   │
-│                      │  │  bookstack-dev  │  │  bookstack-prod │       │   │
-│                      │  └─────────────────┘  └─────────────────┘       │   │
+│                      │  ┌─────────────────┐  ┌─────────────────┐        │   │
+│                      │  │  bookstack-dev  │  │  bookstack-prod │        │   │
+│                      │  └─────────────────┘  └─────────────────┘        │   │
 │                      └──────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────┘
             │
             ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                               CLOUDFLARE                                     │
+│                               CLOUDFLARE                                    │
 │         DNS automatique (external-dns) + Proxy/CDN optionnel                │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -397,19 +397,19 @@ kubectl -n argocd create secret generic sops-age \
                     Ingress (Traefik)
                            │
                            ▼
-┌─────────────────────────────────────────────┐
-│              Namespace bookstack-dev        │
-│                                             │
-│  ┌─────────────┐       ┌─────────────┐     │
-│  │  BookStack  │──────►│   MariaDB   │     │
-│  │   (PHP)     │       │   (MySQL)   │     │
-│  └──────┬──────┘       └──────┬──────┘     │
-│         │                     │            │
-│         ▼                     ▼            │
-│  ┌─────────────┐       ┌─────────────┐     │
-│  │ PVC config  │       │  PVC data   │     │
-│  └─────────────┘       └─────────────┘     │
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│         Namespace bookstack-dev          │
+│                                          │
+│  ┌─────────────┐       ┌─────────────┐   │
+│  │  BookStack  │──────►│   MariaDB   │   │
+│  │   (PHP)     │       │   (MySQL)   │   │
+│  └──────┬──────┘       └──────┬──────┘   │
+│         │                     │          │
+│         ▼                     ▼          │
+│  ┌─────────────┐       ┌─────────────┐   │
+│  │ PVC config  │       │  PVC data   │   │
+│  └─────────────┘       └─────────────┘   │
+└──────────────────────────────────────────┘
 ```
 
 **BookStack** :
@@ -532,12 +532,12 @@ Déclenché manuellement pour promouvoir une image en production.
 Input: image_tag (ex: sha-abc123)
   │
   ▼
-┌─────────────────────────────────────┐
-│ 1. Checkout branche main            │
-│ 2. Valide format du tag             │
-│ 3. Update overlays/prod/kustomization│
-│ 4. Commit + push vers branche prod  │
-└─────────────────────────────────────┘
+┌───────────────────────────────────────┐
+│ 1. Checkout branche main              │
+│ 2. Valide format du tag               │
+│ 3. Update overlays/prod/kustomization │
+│ 4. Commit + push vers branche prod    │
+└───────────────────────────────────────┘
   │
   ▼
 ArgoCD sync branche prod → déploiement bookstack-prod
