@@ -551,45 +551,124 @@ Permet de revenir à l'image publique linuxserver/bookstack quand l'ACR est dét
 
 ### 4.5 Flux de déploiement complet
 
+## Déploiement en DEV (automatique)
+
+Déclenché automatiquement sur chaque push dans `app/` sur la branche main.
+
 ```
-Développeur                 GitHub                    Azure                    Cluster
-    │                          │                        │                         │
-    │ 1. Push app/             │                        │                         │
-    ├─────────────────────────►│                        │                         │
-    │                          │                        │                         │
-    │                          │ 2. CI: build+scan      │                         │
-    │                          ├───────────────────────►│                         │
-    │                          │                        │                         │
-    │                          │ 3. Push image ACR      │                         │
-    │                          ├───────────────────────►│                         │
-    │                          │                        │                         │
-    │                          │ 4. Commit tag dev      │                         │
-    │                          ├──────────┐             │                         │
-    │                          │◄─────────┘             │                         │
-    │                          │                        │                         │
-    │                          │                        │  5. ArgoCD poll         │
-    │                          │◄───────────────────────┼─────────────────────────┤
-    │                          │                        │                         │
-    │                          │                        │  6. Sync dev            │
-    │                          │                        │─────────────────────────►
-    │                          │                        │                         │
-    │ 7. Test en dev           │                        │                         │
-    │◄────────────────────────────────────────────────────────────────────────────┤
-    │                          │                        │                         │
-    │ 8. Workflow promote-prod │                        │                         │
-    ├─────────────────────────►│                        │                         │
-    │                          │                        │                         │
-    │                          │ 9. Update tag prod     │                         │
-    │                          ├──────────┐             │                         │
-    │                          │◄─────────┘             │                         │
-    │                          │                        │                         │
-    │                          │                        │  10. ArgoCD poll        │
-    │                          │◄───────────────────────┼─────────────────────────┤
-    │                          │                        │                         │
-    │                          │                        │  11. Sync prod          │
-    │                          │                        │─────────────────────────►
-    │                          │                        │                         │
+   DÉVELOPPEUR                      GITHUB                         AZURE
+        │                              │                              │
+        │  1. git push (app/)          │                              │
+        ├─────────────────────────────►│                              │
+        │                              │                              │
+        │                              │  2. CI Pipeline              │
+        │                              │  ┌──────────────────────┐    │
+        │                              │  │ • Gitleaks (secrets) │    │
+        │                              │  │ • Build image        │    │
+        │                              │  │ • Trivy (vulns)      │    │
+        │                              │  └──────────┬───────────┘    │
+        │                              │             │                │
+        │                              │             │ 3. Push image  │
+        │                              │             └───────────────►│ ACR
+        │                              │                              │
+        │                              │  4. Commit nouveau tag       │
+        │                              │     dans overlays/dev/       │
+        │                              │◄─────────────┘               │
+        │                              │                              │
+        │                              │                              │
+   CLUSTER AKS                         │                              │
+        │                              │                              │
+        │  5. ArgoCD détecte           │                              │
+        │     le changement            │                              │
+        │◄─────────────────────────────┤                              │
+        │                              │                              │
+        │  6. Pull image depuis ACR    │                              │
+        │◄─────────────────────────────┼──────────────────────────────┤
+        │                              │                              │
+        │  7. Déploie bookstack-dev    │                              │
+        ▼                              │                              │
+   [APP DEV EN LIGNE]                  │                              │
 ```
+
+---
+
+## Promotion en PROD (manuelle)
+
+Déclenché manuellement via GitHub Actions avec le tag à promouvoir.
+
+```
+   DÉVELOPPEUR                      GITHUB                      CLUSTER AKS
+        │                              │                              │
+        │  1. Déclenche workflow       │                              │
+        │     promote-prod             │                              │
+        │     (input: sha-xxx)         │                              │
+        ├─────────────────────────────►│                              │
+        │                              │                              │
+        │                              │  2. Met à jour               │
+        │                              │     overlays/prod/           │
+        │                              │     avec le même tag         │
+        │                              │                              │
+        │                              │  3. Push branche prod        │
+        │                              │◄─────────────┘               │
+        │                              │                              │
+        │                              │                              │
+        │                              │  4. ArgoCD détecte           │
+        │                              ├─────────────────────────────►│
+        │                              │                              │
+        │                              │  5. Déploie bookstack-prod   │
+        │                              │     (même image que dev)     │
+        │                              │                              │
+        │                              │                              ▼
+        │                              │                      [APP PROD EN LIGNE]
+```
+
+---
+
+## Points clés
+
+| Aspect | Explication |
+|--------|-------------|
+| **Build unique** | L'image Docker est construite une seule fois lors du CI dev |
+| **Promotion sans rebuild** | La prod utilise exactement la même image que dev (même SHA) |
+| **GitOps** | Aucun déploiement manuel : ArgoCD synchronise depuis Git |
+| **Traçabilité** | Chaque déploiement est lié à un commit Git précis |
+| **Rollback** | Possible via revert Git ou historique ArgoCD |
+
+---
+
+## Résumé en une image
+
+```
+                    ┌─────────────────────────────────────────┐
+                    │              GITHUB                     │
+                    │                                         │
+  git push app/ ───►│  CI ──► Build ──► Scan ──► Push ACR     │
+                    │          │                              │
+                    │          ▼                              │
+                    │  Commit tag ──► overlays/dev/           │
+                    │                                         │
+                    │                                         │
+  workflow manuel ─►│  Copie tag ──► overlays/prod/           │
+                    │                                         │
+                    └───────────────────┬─────────────────────┘
+                                        │
+                                        │ sync
+                                        ▼
+                    ┌─────────────────────────────────────────┐
+                    │              ARGOCD                     │
+                    │                                         │
+                    │  Surveille Git ──► Applique manifests   │
+                    │                                         │
+                    └───────────────────┬─────────────────────┘
+                                        │
+                          ┌─────────────┴─────────────┐
+                          ▼                           ▼
+                   ┌─────────────┐             ┌─────────────┐
+                   │ bookstack-  │             │ bookstack-  │
+                   │     dev     │             │    prod     │
+                   └─────────────┘             └─────────────┘
+```
+
 
 ### 4.6 Sécurité applicative
 
