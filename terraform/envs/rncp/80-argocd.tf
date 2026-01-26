@@ -58,26 +58,25 @@ repoServer:
       image: alpine:3.20
       command: ["/bin/sh", "-c"]
       args:
-      args:
         - |
           set -euo pipefail
-          apk add --no-cache curl tar
+          apk add --no-cache curl tar coreutils
 
           KSOPS_VERSION="${var.ksops_version}"
-          ASSET="ksops_${KSOPS_VERSION}_Linux_x86_64.tar.gz"
-          URL="https://github.com/viaduct-ai/kustomize-sops/releases/download/v${KSOPS_VERSION}/${ASSET}"
+          ASSET="ksops_$${KSOPS_VERSION}_Linux_x86_64.tar.gz"
+          URL="https://github.com/viaduct-ai/kustomize-sops/releases/download/v$${KSOPS_VERSION}/$${ASSET}"
 
           # SHA256 "pinné" via Terraform (référence fixe dans ton repo)
           EXPECTED_SHA="${var.ksops_sha256}"
 
           # Download
-          curl -fsSL -o "/tmp/${ASSET}" "${URL}"
+          curl -fsSL -o "/tmp/$${ASSET}" "$${URL}"
 
-          # Vérif SHA256 : si mismatch => fail (et donc repo-server ne démarre pas avec un binaire altéré)
-          echo "${EXPECTED_SHA}  /tmp/${ASSET}" | sha256sum -c -
+          # Vérif SHA256 : si mismatch => fail
+          echo "$${EXPECTED_SHA}  /tmp/$${ASSET}" | sha256sum -c -
 
           # Install binaire
-          tar -xzf "/tmp/${ASSET}" -C /tmp
+          tar -xzf "/tmp/$${ASSET}" -C /tmp
           mv /tmp/ksops /custom-tools/ksops
           chmod +x /custom-tools/ksops
 
