@@ -18,7 +18,6 @@ VELERO_BSL="${PLATFORM_REPO_DIR}/${VELERO_BSL_REL}"
 need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing dependency: $1"; exit 1; }; }
 need terraform
 need sops
-need python3
 need git
 
 if [[ ! -d "$PLATFORM_REPO_DIR/.git" ]]; then
@@ -26,38 +25,28 @@ if [[ ! -d "$PLATFORM_REPO_DIR/.git" ]]; then
   exit 1
 fi
 
-# ---- Terraform outputs ----
-TMP_ERR="$(mktemp)"
-TF_OUT_JSON="$(terraform -chdir="$TF_DIR" output -json 2>"$TMP_ERR" || true)"
+tfout() {
+  terraform -chdir="$TF_DIR" output -raw "$1"
+}
 
-if [[ -z "${TF_OUT_JSON// }" ]]; then
-  echo "ERROR: terraform output -json returned empty output."
-  echo "Terraform stderr was:"
-  sed 's/^/  /' "$TMP_ERR" || true
-  rm -f "$TMP_ERR"
-  echo
+# Petit check "terraform ok"
+if ! terraform -chdir="$TF_DIR" output >/dev/null 2>&1; then
+  echo "ERROR: terraform outputs not available."
   echo "Check:"
   echo "  - TF_DIR is correct (currently: $TF_DIR)"
   echo "  - terraform init/apply has been run in that directory"
   exit 1
 fi
-rm -f "$TMP_ERR"
-
-pyget() {
-  python3 -c 'import json,sys; data=json.load(sys.stdin); print(data[sys.argv[1]]["value"])' "$1"
-}
 
 # ---- Required outputs ----
-SUBSCRIPTION_ID="$(printf '%s' "$TF_OUT_JSON" | pyget subscription_id)"
-TENANT_ID="$(printf '%s' "$TF_OUT_JSON" | pyget tenant_id)"
-AKS_RESOURCE_GROUP="$(printf '%s' "$TF_OUT_JSON" | pyget resource_group_name)"
-VELERO_CLIENT_ID="$(printf '%s' "$TF_OUT_JSON" | pyget velero_client_id)"
-VELERO_CLIENT_SECRET="$(printf '%s' "$TF_OUT_JSON" | pyget velero_client_secret)"
-
-# ---- Required outputs for BSL (à ajouter dans Terraform si manquants) ----
-VELERO_STORAGE_RG="$(printf '%s' "$TF_OUT_JSON" | pyget resource_group_name)"
-VELERO_STORAGE_ACCOUNT="$(printf '%s' "$TF_OUT_JSON" | pyget storage_account_name)"
-VELERO_BUCKET="$(printf '%s' "$TF_OUT_JSON" | pyget velero_container_name)"
+SUBSCRIPTION_ID="$(tfout subscription_id)"
+TENANT_ID="$(tfout tenant_id)"
+AKS_RESOURCE_GROUP="$(tfout resource_group_name)"
+VELERO_CLIENT_ID="$(tfout velero_client_id)"
+VELERO_CLIENT_SECRET="$(tfout velero_client_secret)"
+VELERO_STORAGE_RG="$(tfout resource_group_name)"
+VELERO_STORAGE_ACCOUNT="$(tfout storage_account_name)"
+VELERO_BUCKET="$(tfout velero_container_name)"
 
 cd "$PLATFORM_REPO_DIR"
 

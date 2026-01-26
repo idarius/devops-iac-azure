@@ -14,3 +14,9 @@ export TF_VAR_subscription_id="$ARM_SUBSCRIPTION_ID"
 
 echo "ARM_SUBSCRIPTION_ID=$ARM_SUBSCRIPTION_ID"
 echo "ARM_TENANT_ID=$ARM_TENANT_ID"
+
+# Optionnel : IP whitelist AKS via env
+# export TF_VAR_aks_api_authorized_ip_ranges='["x.x.x.x/32"]'
+if [[ -n "${TF_VAR_aks_api_authorized_ip_ranges:-}" ]]; then
+  echo "TF_VAR_aks_api_authorized_ip_ranges=$TF_VAR_aks_api_authorized_ip_ranges"
+fi

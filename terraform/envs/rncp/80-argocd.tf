@@ -15,6 +15,12 @@ resource "helm_release" "argocd" {
   cleanup_on_fail = true
 
   values = [<<-YAML
+
+global:
+  image:
+    repository: quay.io/argoproj/argocd
+    tag: v3.2.5
+    
 server:
   service:
     type: ClusterIP
@@ -52,25 +58,34 @@ repoServer:
       image: alpine:3.20
       command: ["/bin/sh", "-c"]
       args:
+      args:
         - |
           set -euo pipefail
           apk add --no-cache curl tar
 
-          KSOPS_VERSION="4.4.0"
+          KSOPS_VERSION="${var.ksops_version}"
+          ASSET="ksops_${KSOPS_VERSION}_Linux_x86_64.tar.gz"
+          URL="https://github.com/viaduct-ai/kustomize-sops/releases/download/v${KSOPS_VERSION}/${ASSET}"
 
-          # Download binaire
-          curl -fsSL -o /tmp/ksops.tar.gz \
-            "https://github.com/viaduct-ai/kustomize-sops/releases/download/v$${KSOPS_VERSION}/ksops_$${KSOPS_VERSION}_Linux_x86_64.tar.gz"
+          # SHA256 "pinné" via Terraform (référence fixe dans ton repo)
+          EXPECTED_SHA="${var.ksops_sha256}"
 
-          tar -xzf /tmp/ksops.tar.gz -C /tmp
+          # Download
+          curl -fsSL -o "/tmp/${ASSET}" "${URL}"
+
+          # Vérif SHA256 : si mismatch => fail (et donc repo-server ne démarre pas avec un binaire altéré)
+          echo "${EXPECTED_SHA}  /tmp/${ASSET}" | sha256sum -c -
+
+          # Install binaire
+          tar -xzf "/tmp/${ASSET}" -C /tmp
           mv /tmp/ksops /custom-tools/ksops
           chmod +x /custom-tools/ksops
 
-          # Install plugin at the standard Kustomize plugin path:
-          # $XDG_CONFIG_HOME/kustomize/plugin/<group>/<version>/<kind>/<kind>
+          # Install plugin au chemin attendu par Kustomize exec plugins
           mkdir -p /kustomize-plugins/viaduct.ai/v1/ksops
           cp /custom-tools/ksops /kustomize-plugins/viaduct.ai/v1/ksops/ksops
           chmod +x /kustomize-plugins/viaduct.ai/v1/ksops/ksops
+
       volumeMounts:
         - name: custom-tools
           mountPath: /custom-tools

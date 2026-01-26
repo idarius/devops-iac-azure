@@ -55,9 +55,11 @@ variable "tags" {
 
 variable "aks_api_authorized_ip_ranges" {
   type        = list(string)
-  description = "Liste d'IPs/CIDR autorisés à accéder à l'API AKS. laisser vide pour ne pas restreindre"
-  default     = ["82.65.41.225/32"]
+  description = "Liste d'IPs/CIDR autorisés à accéder à l'API AKS. laisser vide pour ne pas restreindre, ou passer en variable export TF_VAR_aks_api_authorized_ip_ranges='[]' "
+  default     = []
 }
+
+
 
 ########################################
 # GitHub (OIDC + variables GitHub Actions)
@@ -65,7 +67,7 @@ variable "aks_api_authorized_ip_ranges" {
 
 variable "github_owner" {
   type        = string
-  description = "Owner GitHub (org ou user)"
+  description = "Propriétaire du repo Github"
   default     = "idarius"
 }
 
@@ -85,4 +87,28 @@ variable "github_token" {
   type        = string
   description = "GitHub token (PAT) pour que Terraform crée automatiquement les GitHub Actions Variables"
   sensitive   = true
+}
+
+##########
+# Velero
+##########
+variable "velero_enable_rg_contributor" {
+  type        = bool
+  description = "Autorise Velero en Contributor sur le RG (si besoin de snapshots Azure)"
+  default     = false
+}
+
+########
+# KSOPS 
+########
+variable "ksops_version" {
+  type        = string
+  description = "Version de KSOPS installée dans ArgoCD"
+  default     = "4.4.0"
+}
+
+variable "ksops_sha256" {
+  type        = string
+  description = "SHA256 du binaire KSOPS pour vérification d'intégrité"
+  default     = "72973ce5a97d7ad0318c9f6ae4df2aa94a4a564c45fdf71772b759dff4df0cb4"
 }
