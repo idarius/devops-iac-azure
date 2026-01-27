@@ -34,7 +34,7 @@ output "velero_container_name" {
 }
 
 output "gha_acr_client_id" {
-  description = "Client ID (App Registration) pour OIDC GitHub Actions -> Azure"
+  description = "Client ID (App Registration) pour OIDC GitHub Actions"
   value       = azuread_application.gha_acr.client_id
 }
 
@@ -49,13 +49,13 @@ output "subscription_id" {
 }
 
 output "storage_account_key" {
-  description = "Primary access key du Storage Account (Velero) - à mettre dans le secret cloud-credentials"
+  description = "Primary access key du Storage Account (Velero) (secret cloud-credentials)"
   value       = azurerm_storage_account.sa.primary_access_key
   sensitive   = true
 }
 
 output "velero_client_id" {
-  description = "Client ID (App Registration) pour Velero"
+  description = "Client ID pour Velero"
   value       = azuread_application.velero.client_id
 }
 

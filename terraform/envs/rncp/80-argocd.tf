@@ -1,3 +1,4 @@
+# ArgoCD avec KSOPS pour déchiffrer les secrets SOPS
 resource "helm_release" "argocd" {
   depends_on = [azurerm_kubernetes_cluster.aks]
 
@@ -20,12 +21,12 @@ global:
   image:
     repository: quay.io/argoproj/argocd
     tag: v3.2.5
-    
+
 server:
   service:
     type: ClusterIP
 
-# Active KSOPS via kustomize alpha plugins + exec
+# Activation de KSOPS via kustomize alpha plugins
 configs:
   cm:
     kustomize.buildOptions: "--enable-alpha-plugins --enable-exec"
@@ -33,6 +34,7 @@ configs:
 repoServer:
   replicas: 1
 
+  # Volumes pour kustomize, ksops et la clé Age
   volumes:
     - name: custom-tools
       emptyDir: {}
@@ -44,7 +46,7 @@ repoServer:
         optional: true
 
   initContainers:
-    # 1) Copie kustomize depuis l'image Argo CD (déjà OK et pullable)
+    # Copie du binaire kustomize depuis l'image ArgoCD
     - name: copy-kustomize
       image: quay.io/argoproj/argocd:v3.2.5
       command: ["/bin/cp"]
@@ -53,7 +55,7 @@ repoServer:
         - name: custom-tools
           mountPath: /custom-tools
 
-    # 2) Télécharge ksops depuis GitHub Releases + l'installe comme plugin Kustomize
+    # Installation de ksops avec vérification SHA256
     - name: install-ksops
       image: alpine:3.20
       command: ["/bin/sh", "-c"]
@@ -65,22 +67,18 @@ repoServer:
           KSOPS_VERSION="${var.ksops_version}"
           ASSET="ksops_$${KSOPS_VERSION}_Linux_x86_64.tar.gz"
           URL="https://github.com/viaduct-ai/kustomize-sops/releases/download/v$${KSOPS_VERSION}/$${ASSET}"
-
-          # SHA256 "pinné" via Terraform (référence fixe dans ton repo)
           EXPECTED_SHA="${var.ksops_sha256}"
 
-          # Download
+          # Download et vérification SHA256
           curl -fsSL -o "/tmp/$${ASSET}" "$${URL}"
-
-          # Vérif SHA256 : si mismatch => fail
           echo "$${EXPECTED_SHA}  /tmp/$${ASSET}" | sha256sum -c -
 
-          # Install binaire
+          # Extraction et installation du binaire
           tar -xzf "/tmp/$${ASSET}" -C /tmp
           mv /tmp/ksops /custom-tools/ksops
           chmod +x /custom-tools/ksops
 
-          # Install plugin au chemin attendu par Kustomize exec plugins
+          # Installation du plugin kustomize
           mkdir -p /kustomize-plugins/viaduct.ai/v1/ksops
           cp /custom-tools/ksops /kustomize-plugins/viaduct.ai/v1/ksops/ksops
           chmod +x /kustomize-plugins/viaduct.ai/v1/ksops/ksops
@@ -92,24 +90,21 @@ repoServer:
           mountPath: /kustomize-plugins
 
   volumeMounts:
-    # kustomize binaire
     - name: custom-tools
       mountPath: /usr/local/bin/kustomize
       subPath: kustomize
 
-    # (optionnel) garder ksops aussi dans PATH pour debug
     - name: custom-tools
       mountPath: /usr/local/bin/ksops
       subPath: ksops
 
-    # plugin path Kustomize
     - name: kustomize-plugins
       mountPath: /.config/kustomize/plugin
 
-    # clé Age SOPS
     - name: sops-age
       mountPath: /.config/sops/age
 
+  # Config pour KSOPS et SOPS
   env:
     - name: XDG_CONFIG_HOME
       value: /.config
@@ -124,6 +119,7 @@ repoServer:
 applicationSet:
   replicaCount: 1
 
+# Notifications et ressources par composant
 notifications:
   enabled: true
   resources:

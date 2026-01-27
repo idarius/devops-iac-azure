@@ -29,7 +29,7 @@ resource "azurerm_role_assignment" "velero_blob_data_contributor" {
   skip_service_principal_aad_check = true
 }
 
-# OPTIONAL: si besoin d'activer les snapshots Azure
+# OPTIONAL: si besoin d'activer les snapshots Azure plus tard
 resource "azurerm_role_assignment" "velero_rg_contributor" {
   count = var.velero_enable_rg_contributor ? 1 : 0
 

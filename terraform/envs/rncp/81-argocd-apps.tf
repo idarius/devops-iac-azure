@@ -1,3 +1,4 @@
+# App-of-apps ArgoCD : pointe vers platform-k8s pour déployer tous les manifestes
 resource "helm_release" "argocd_apps" {
   depends_on = [helm_release.argocd]
 
@@ -24,6 +25,7 @@ applications:
       path: cluster/rncp-aks
       directory:
         recurse: true
+        # Déploie uniquement les AppProjects, Applications et ApplicationSets 
         include: '{**/*project.yaml,**/application.yaml,**/applicationset.yaml}'
     destination:
       server: https://kubernetes.default.svc

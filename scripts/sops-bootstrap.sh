@@ -15,7 +15,7 @@ kubectl -n argocd create secret generic sops-age \
   --from-file=age.agekey="$AGE_KEY_FILE" \
   --dry-run=client -o yaml | kubectl apply -f -
 
-# Optionnel mais recommandé : restart repo-server pour recharger clean l'env / montage
+# restart repo-server pour recharger l'env
 kubectl -n argocd rollout restart deploy argocd-repo-server || true
 
 echo "OK: secret sops-age applied in namespace argocd."

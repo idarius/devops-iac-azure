@@ -25,7 +25,7 @@ resource "azuread_application_federated_identity_credential" "gha_main" {
   subject   = "repo:${local.github_repo_full_name}:ref:refs/heads/${var.github_branch}"
 }
 
-# Donne le droit de push dans ACR à ce SP
+# Donne le droit de push dans ACR
 resource "azurerm_role_assignment" "gha_acr_push" {
   scope                = azurerm_container_registry.acr.id
   role_definition_name = "AcrPush"

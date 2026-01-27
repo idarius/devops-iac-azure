@@ -1,35 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Dossier terraform
+# Répertoire Terraform pour la configuration Azure
 TF_DIR="${TF_DIR:-terraform/envs/rncp}"
 
-# Repo platform local
+# Chemin local du dépôt platform-k8s ou seront générés les fichiers Velero
 PLATFORM_REPO_DIR="${PLATFORM_REPO_DIR:-$HOME/devops/devops-platform-k8s}"
 
-# Fichier secret cible dans le repo platform
+# Chemin du fichier secret Velero (chiffré avec SOPS)
 VELERO_SECRET_REL="cluster/rncp-aks/platform/velero-secrets/cloud-credentials.secret.sops.yaml"
 VELERO_SECRET="${PLATFORM_REPO_DIR}/${VELERO_SECRET_REL}"
 
-# Fichier BSL cible (non sensible -> peut être en clair)
+# Chemin du fichier BackupStorageLocation (non sensible, pas chiffré)
 VELERO_BSL_REL="cluster/rncp-aks/platform/velero-config/backupstoragelocation.yaml"
 VELERO_BSL="${PLATFORM_REPO_DIR}/${VELERO_BSL_REL}"
 
+# Dépendances requises
 need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing dependency: $1"; exit 1; }; }
 need terraform
 need sops
 need git
 
+# Le répertoire platform doit être un dépôt git pour le commit auto
 if [[ ! -d "$PLATFORM_REPO_DIR/.git" ]]; then
   echo "ERROR: PLATFORM_REPO_DIR is not a git repo: $PLATFORM_REPO_DIR"
   exit 1
 fi
 
+# Helper pour récupérer un output Terraform
 tfout() {
   terraform -chdir="$TF_DIR" output -raw "$1"
 }
 
-# Petit check "terraform ok"
+# On a besoin des outputs Terraform (donc init + apply faits)
 if ! terraform -chdir="$TF_DIR" output >/dev/null 2>&1; then
   echo "ERROR: terraform outputs not available."
   echo "Check:"
@@ -38,7 +41,7 @@ if ! terraform -chdir="$TF_DIR" output >/dev/null 2>&1; then
   exit 1
 fi
 
-# ---- Required outputs ----
+# Récupération des valeurs Azure depuis les outputs Terraform
 SUBSCRIPTION_ID="$(tfout subscription_id)"
 TENANT_ID="$(tfout tenant_id)"
 AKS_RESOURCE_GROUP="$(tfout resource_group_name)"
@@ -50,12 +53,13 @@ VELERO_BUCKET="$(tfout velero_container_name)"
 
 cd "$PLATFORM_REPO_DIR"
 
+# SOPS doit être configuré dans le repo pour chiffrer les secrets
 if [[ ! -f ".sops.yaml" ]]; then
   echo "ERROR: .sops.yaml not found in $PLATFORM_REPO_DIR"
   exit 1
 fi
 
-# ---- Generate encrypted Secret (SOPS) ----
+# Génération du Secret Velero (sera chiffré avec SOPS)
 TMP_PLAIN="$(mktemp -p . velero-cloud-credentials.XXXXXX.sops.yaml)"
 TMP_ENC="$(mktemp -p . velero-cloud-credentials.XXXXXX.enc.sops.yaml)"
 
@@ -79,7 +83,7 @@ EOF
 sops -e "$TMP_PLAIN" > "$TMP_ENC"
 rm -f "$TMP_PLAIN"
 
-# ---- Safety checks ----
+# Vérification que le fichier est bien chiffré avant de le commiter
 if ! grep -qE '^sops:' "$TMP_ENC"; then
   echo "ERROR: encrypted output does not contain a top-level 'sops:' block."
   echo "Refusing to overwrite and push."
@@ -97,7 +101,7 @@ fi
 mkdir -p "$(dirname "$VELERO_SECRET_REL")"
 mv -f "$TMP_ENC" "$VELERO_SECRET_REL"
 
-# ---- Generate BackupStorageLocation (non sensible -> en clair) ----
+# Génération du BackupStorageLocation (pas de secrets, pas besoin de chiffrer)
 mkdir -p "$(dirname "$VELERO_BSL_REL")"
 cat > "$VELERO_BSL_REL" <<EOF
 apiVersion: velero.io/v1
@@ -119,7 +123,7 @@ spec:
     key: cloud
 EOF
 
-# ---- Commit/push ----
+# Commit et push vers platform-k8s
 git add "$VELERO_SECRET_REL" "$VELERO_BSL_REL"
 
 if git diff --cached --quiet; then

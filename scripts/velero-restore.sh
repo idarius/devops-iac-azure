@@ -1,27 +1,40 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage:
-#   ./scripts/velero-restore.sh <backupName> dev
-#   ./scripts/velero-restore.sh <backupName> prod
-#   ./scripts/velero-restore.sh <backupName> both
+################################################################################
+# Script de restauration de sauvegardes Velero pour les environnements Kubernetes
+################################################################################
 #
-# Env vars:
-#   VELERO_NS=velero
-#   DEV_NS=bookstack-dev
-#   PROD_NS=bookstack-prod
-#   WIPE=true|false   (delete namespace(s) before restore)
-#   WAIT=true|false
+# USAGE:
+#   ./scripts/velero-restore.sh <backupName> dev     # Restaure en dev
+#   ./scripts/velero-restore.sh <backupName> prod    # Restaure en prod
+#   ./scripts/velero-restore.sh <backupName> both    # Restaure dev et prod
+#
+# VARIABLES D'ENVIRONNEMENT :
+#   VELERO_NS       - Namespace où Velero est installé (défaut: velero)
+#   DEV_NS          - Namespace de développement (défaut: bookstack-dev)
+#   PROD_NS         - Namespace de production (défaut: bookstack-prod)
+#   WIPE            - Supprimer les namespaces avant restauration (défaut: false)
+#   WAIT            - Attendre la fin de la restauration (défaut: true)
 
+# Namespace Velero
 VELERO_NS="${VELERO_NS:-velero}"
+
+# Namespaces applicatifs
 DEV_NS="${DEV_NS:-bookstack-dev}"
 PROD_NS="${PROD_NS:-bookstack-prod}"
+
+# Supprimer les namespaces avant restore (default: false)
 WIPE="${WIPE:-false}"
+
+# Attendre la fin de la restore avant de terminer (default: true)
 WAIT="${WAIT:-true}"
 
+# Dépendances requises
 need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing dependency: $1"; exit 1; }; }
 need kubectl
 
+# Args: backupName et mode (dev|prod|both)
 backup="${1:-}"
 mode="${2:-}"
 
@@ -30,7 +43,7 @@ if [[ -z "$backup" || -z "$mode" ]]; then
   exit 1
 fi
 
-# verify backup exists
+# Vérifier que le backup existe
 if ! kubectl -n "$VELERO_NS" get backup "$backup" >/dev/null 2>&1; then
   echo "ERROR: backup '${backup}' not found in namespace '${VELERO_NS}'"
   echo "Available backups:"
@@ -58,7 +71,8 @@ if [[ "$WIPE" == "true" ]]; then
   for ns in "${namespaces[@]}"; do
     echo "Wiping namespace: ${ns}"
     kubectl delete ns "$ns" --ignore-not-found
-    # wait for deletion
+    
+    # Attendre que la suppression soit effective
     for i in {1..120}; do
       if kubectl get ns "$ns" >/dev/null 2>&1; then
         sleep 2
@@ -70,6 +84,7 @@ if [[ "$WIPE" == "true" ]]; then
   done
 fi
 
+# Créer la ressource Restore Velero
 ts="$(date +%Y%m%d-%H%M%S)"
 restore="restore-${backup}-${ts}"
 
@@ -112,6 +127,7 @@ if [[ "$WAIT" == "true" ]]; then
   done
 fi
 
+# Vérifier l'état des namespaces restaurés
 echo "Post-checks:"
 for ns in "${namespaces[@]}"; do
   echo "== ${ns} =="
