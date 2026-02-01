@@ -29,6 +29,15 @@ resource "azurerm_role_assignment" "velero_blob_data_contributor" {
   skip_service_principal_aad_check = true
 }
 
+# Permission pour lister les clés du storage account                            
+  resource "azurerm_role_assignment" "velero_storage_account_contributor" {                                
+    scope                = azurerm_storage_account.sa.id                                                   
+    role_definition_name = "Storage Account Contributor"                                                   
+    principal_id         = azuread_service_principal.velero.object_id                                      
+                                                                                                           
+    skip_service_principal_aad_check = true                                                                
+  }
+
 # OPTIONAL: si besoin d'activer les snapshots Azure plus tard
 resource "azurerm_role_assignment" "velero_rg_contributor" {
   count = var.velero_enable_rg_contributor ? 1 : 0
